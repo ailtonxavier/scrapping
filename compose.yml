@@ -1,0 +1,43 @@
+services:
+  # 1. Sua Aplicação Python
+  app:
+    build: .
+    container_name: python_app
+    restart: always
+    depends_on:
+      - redis
+    # Mapeia a pasta local para dentro do container (útil para desenvolvimento)
+    volumes:
+      - .:/app
+    # Variáveis de ambiente para seu código Python ler
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  # 2. Banco de Dados Redis
+  redis:
+    image: redis:alpine
+    container_name: meu_redis
+    restart: always
+    ports:
+      - "6379:6379" # Libera a porta caso queira acessar via ferramenta visual no PC
+    volumes:
+      - redis_data:/data # Persistência dos dados
+
+  # 3. Grafana
+  grafana:
+    image: grafana/grafana
+    container_name: meu_grafana
+    restart: always
+    ports:
+      - "3000:3000" # Acesso via navegador: http://localhost:3000
+    volumes:
+      - grafana_data:/var/lib/grafana # Persistência de dashboards e usuários
+    environment:
+      # Instala automaticamente o plugin para ler dados do Redis
+      - GF_INSTALL_PLUGINS=redis-datasource 
+
+# Definição dos volumes para persistência
+volumes:
+  redis_data:
+  grafana_data:
