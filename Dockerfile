@@ -12,4 +12,4 @@ RUN set -x && \
     pip install -r requirements.txt && \
     rm -r requirements.txt
 # executa o app com o python
-CMD ["python", "app.py"]
+CMD ["python", "app/app.py"]
