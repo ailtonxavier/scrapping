@@ -1,43 +1,72 @@
-import requests
-from bs4 import BeautifulSoup
+"""
+Entrypoint script that uses the scraper and repository modules.
 
-url = "https://www.accuweather.com/pt/br/natal/35658/weather-forecast/35658?city=natal"
+This module orchestrates fetching data for multiple cities defined in a YAML
+file and stores the results in Redis.
+"""
 
-# Headers para fingir ser um navegador (Crucial para não ser bloqueado)
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+import time
+import yaml
+from repository.redis_repository import WeatherRepository
+from scraper.accuweather import get_temperature
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    )
 }
 
-try:
-    response = requests.get(url, headers=headers)
+def load_cities():
+    """Loads city data from cities.yml."""
+    try:
+        with open("cities.yml", "r") as f:
+            return yaml.safe_load(f)["capitais"]
+    except FileNotFoundError:
+        print("Erro: O arquivo cities.yml não foi encontrado.")
+        return []
+    except (yaml.YAMLError, KeyError) as e:
+        print(f"Erro ao ler ou processar o arquivo cities.yml: {e}")
+        return []
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, "html.parser")
+def main() -> None:
+    repo = WeatherRepository()
+    cities = load_cities()
 
-        # Estratégia 1: Tentar encontrar o card de "Tempo Atual" (Mais preciso)
-        # A classe 'cur-con-weather-card__panel' geralmente contém o bloco de tempo atual
-        current_weather_card = soup.find("div", class_="cur-con-weather-card__panel")
-        
-        if current_weather_card:
-            # Dentro do card, procuramos a classe da temperatura
-            temp_element = current_weather_card.find("div", class_="temp")
-            if temp_element:
-                print(f"Temperatura Atual: {temp_element.text.strip()}")
-            else:
-                print("Encontrei o card, mas não achei o número da temperatura.")
-        
-        # Estratégia 2 (Fallback): Pegar o primeiro elemento com classe 'temp' da página
-        # Às vezes o layout muda e o primeiro .temp costuma ser o destaque
-        else:
-            print("Card específico não encontrado, tentando busca genérica...")
-            generic_temp = soup.find("div", class_="temp")
-            if generic_temp:
-                print(f"Temperatura encontrada (pode ser previsão): {generic_temp.text.strip()}")
-            else:
-                print("Não foi possível encontrar a temperatura.")
+    if not cities:
+        print("Nenhuma cidade para processar. Finalizando.")
+        return
 
-    else:
-        print(f"Erro na requisição: {response.status_code}")
+    print(f"Cidades a serem processadas: {[city['nome'] for city in cities]}")
 
-except Exception as e:
-    print(f"Erro no script: {e}")
+    try:
+        while True:
+            print("-" * 20)
+            for city in cities:
+                city_name = city["nome"]
+                city_url = city["url"]
+                city_key = f"temperatura:{city_name}"
+                
+                print(f"Buscando temperatura para: {city_name}")
+                temp = get_temperature(city_url, HEADERS)
+
+                if temp:
+                    print(f"Temperatura em {city_name}: {temp}°C")
+                    try:
+                        repo.save_temperature(city_key, temp)
+                        print(f"Salvo em Redis: {city_key} -> {temp}")
+                    except Exception as e:
+                        print(f"Erro ao salvar no repositório para {city_name}: {e}")
+                else:
+                    print(f"Não foi possível obter a temperatura para {city_name}.")
+
+            sleep_seconds = 100 * 60
+            print("-" * 20)
+            print(f"Aguardando {sleep_seconds} segundos até o próximo ciclo...")
+            time.sleep(sleep_seconds)
+    except KeyboardInterrupt:
+        print("\nInterrompido pelo usuário, finalizando.")
+
+
+if __name__ == "__main__":
+    main()

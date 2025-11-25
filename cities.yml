@@ -1,0 +1,11 @@
+capitais:
+  - nome: "Natal"
+    url: "https://www.accuweather.com/pt/br/natal/35658/weather-forecast/35658?city=natal"
+  - nome: "João Pessoa"
+    url: "https://www.accuweather.com/pt/br/jo%C3%A3o-pessoa/34631/weather-forecast/34631?city=jo%C3%A3o%20pessoa"
+  - nome: "Fortaleza"
+    url: "https://www.accuweather.com/pt/br/fortaleza/43346/weather-forecast/43346?city=fortaleza"
+  - nome: "Recife"
+    url: "https://www.accuweather.com/pt/br/recife/45090/weather-forecast/45090?city=recife"
+  - nome: "Salvador"
+    url: "https://www.accuweather.com/pt/br/salvador/43080/weather-forecast/43080?city=salvador"
